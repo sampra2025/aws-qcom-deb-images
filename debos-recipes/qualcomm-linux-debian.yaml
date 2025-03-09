@@ -1,0 +1,272 @@
+{{- $image := or .image "disk.img" }}
+{{- $imagesize := or .imagesize "4GiB" }}
+{{- $dtb := or .dtb "firmware" }}
+{{- $xfcedesktop := or .xfcedesktop "false" }}
+{{- $experimentalkernel := or .experimentalkernel "false" }}
+
+architecture: arm64
+
+actions:
+  - action: debootstrap
+    # NB: not currently configurable
+    suite: trixie
+    components:
+      - main
+      # for packages of linux-firmware
+      - non-free-firmware
+    mirror: http://deb.debian.org/debian
+    variant: minbase
+
+  - action: run
+    description: Modernize APT sources
+    chroot: true
+    command: |
+      apt modernize-sources -y
+      rm /etc/apt/sources.list.bak
+  - action: apt
+    description: Install foundational packages
+    recommends: true
+    packages:
+      # bluetooth
+      - bluez
+      # vfat tools, notably fsck.fat for the ESP
+      - dosfstools
+      # ext4 tools, notably e2fsck for the root filesystem
+      - e2fsprogs
+      # defaults to "systemd-sysv"; perhaps not needed
+      - init
+      # Ethernet, Wi-Fi, WWAN; built-in DHCP client
+      - network-manager
+      # standard networking files (/etc/hosts, /etc/services etc.)
+      - netbase
+      # dynamic device nodes handling
+      - udev
+      # database of radio emission regulations; needed for WiFi
+      - wireless-regdb
+      # WPA / WPA2 / WPA3 client support
+      - wpasupplicant
+
+  - action: run
+    description: Set hostname to "debian"
+    chroot: true
+    command: |
+      echo debian >/etc/hostname
+      # /etc/hosts is created by netbase
+      sed -i "1s/^/127.0.1.1	debian\n/" /etc/hosts
+  - action: run
+    description: Add a "debian" user, add it to sudoers and various groups
+    chroot: true
+    command: |
+      set -eu
+      # pre-emptively create a sudo group if sudo isn't installed
+      getent group sudo >/dev/null 2>&1 || groupadd --system sudo
+      # some of these groups are only needed for desktop scenarios
+      useradd --create-home --shell /bin/bash --user-group \
+          --groups adm,video,users,sudo debian
+      # password must be changed on first login; set it to "debian"
+      chage --lastday 0 debian
+      echo debian:debian | chpasswd
+      # add to sudoers
+      mkdir --mode 755 --parents /etc/sudoers.d
+      (
+        umask 226
+        echo "debian ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/90-debos
+      )
+  # NB: Recommends pull in way too many packages, and we don't need to follow
+  # Recommends reaching outside of this Priority level
+  - action: apt
+    description: Install packages of priority "important" (only from Debian)
+    recommends: false
+    packages:
+      - ?origin(Debian) ?priority(important)
+
+  # NB: Recommends pull in way too many packages, and we don't need to follow
+  # Recommends reaching outside of this Priority level
+  - action: apt
+    description: Install packages of priority "standard" (only from Debian)
+    recommends: false
+    packages:
+      - ?origin(Debian) ?priority(standard)
+
+  # TODO remove Priority: standard packages from this list?
+  - action: apt
+    description: Install a comfortable package set
+    recommends: true
+    packages:
+      - alsa-utils
+      - device-tree-compiler
+      - i2c-tools
+      - locales
+      - mesa-utils-bin
+      # convenience networking commands (arp, ifconfig, route etc.)
+      - net-tools
+      - openssh-client
+      # lspci
+      - pciutils
+      - rfkill
+      - sudo
+      # lsusb
+      - usbutils
+      - vim
+      - wget
+
+{{- if eq $xfcedesktop "true" }}
+  # this should ideally be task-xfce-desktop, but this pulls too many apps;
+  # instead, curate from the Depends and Recommends of task-xfce-desktop and
+  # task-desktop recursively; also, disable Recommends
+  - action: apt
+    description: Install Xfce desktop
+    recommends: false
+    packages:
+      # preempt these dependencies as to avoid pulling all backends
+      - xserver-xorg-input-libinput
+      - xserver-xorg-video-fbdev
+      - xserver-xorg-input-all-
+      - xserver-xorg-video-all-
+      - xserver-xorg
+      - plymouth-label- # we probably don't need a boot splash
+      # from task-xfce-desktop
+      - xfce4
+      - lightdm
+      - light-locker
+      - xfce4-terminal
+      - tango-icon-theme
+      - network-manager-applet
+      - nm-connection-editor
+      - synaptic
+      # from task-desktop
+      - desktop-base
+      - xdg-utils
+      - fonts-symbola
+      - avahi-daemon
+      - libnss-mdns
+      - firefox-esr
+{{- end }}
+
+  - action: run
+    description: Set default locale
+    chroot: true
+    command: |
+      set -eu
+      if which locale-gen >/dev/null 2>&1; then
+          echo en_US.UTF-8 UTF-8 >>/etc/locale.gen
+          locale-gen en_US.UTF-8 UTF-8
+          update-locale LANG=en_US.UTF-8
+      fi
+
+{{- if ne $dtb "firmware" }}
+  - action: run
+    description: Use OS device tree override (board specific)
+    chroot: true
+    command: |
+      set -eu
+      mkdir -p /etc/kernel
+      echo {{ $dtb }} >/etc/kernel/devicetree
+{{- end }}
+
+  - action: apt
+    description: Install kernel and firmware packages
+    recommends: true
+    packages:
+      - firmware-atheros
+      - firmware-qcom-soc
+      - linux-image-arm64
+
+{{- if eq $experimentalkernel "true" }}
+  # this is an optional temporary option to install the kernel from
+  # experimental until trixie/sid have a recent enough kernel, or some overlay
+  # archive is provided; note that the original linux-image-arm64 is kept
+  - action: run
+    description: Install Linux kernel from experimental
+    chroot: true
+    command: |
+      set -eu
+      # add experimental APT sources
+      cat >/etc/apt/sources.list.d/debian-experimental.sources <<EOF
+      Types: deb
+      URIs: http://deb.debian.org/debian/
+      Suites: experimental
+      Components: main non-free-firmware
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      EOF
+      # update and install kernel from experimental
+      apt update
+      apt install -y -t experimental linux-image-arm64
+      # disable experimental from APT sources
+      sed -i "1s/^/Enabled: no\n/" \
+          /etc/apt/sources.list.d/debian-experimental.sources
+{{- end }}
+
+  # parttype values are from:
+  # https://www.freedesktop.org/wiki/Specifications/DiscoverablePartitionsSpec/
+  - action: image-partition
+    description: Create an image file
+    imagename: {{ $image }}
+    imagesize: {{ $imagesize }}
+    partitiontype: gpt
+    partitions:
+      - name: esp
+        partlabel: ESP
+        flags: [ boot, esp ]
+        # EFI System Partition
+        parttype: c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+        fs: vfat
+        start: 4MiB
+        # size of 512MiB
+        end: 516MiB
+        fsck: true
+      - name: root
+        # Root Partition (64-bit ARM/AArch64)
+        parttype: b921b045-1df0-41c3-af44-4c6f280d3fae
+        fs: ext4
+        # 4MiB after ESP
+        start: 520MiB
+        end: 100%
+        fsck: true
+    mountpoints:
+      - mountpoint: /boot/efi/
+        partition: esp
+      - mountpoint: /
+        partition: root
+
+  # XXX these kernel options might be specific to a kernel version or board
+  - action: filesystem-deploy
+    setup-fstab: true
+    append-kernel-cmdline: clk_ignore_unused pd_ignore_unused audit=0 deferred_probe_timeout=30
+
+  - action: apt
+    recommends: true
+    description: Make system bootable with systemd-boot
+    packages:
+      - systemd-boot
+      # TODO investigate why systemd-boot Recommends: shim-signed which
+      # Depends on grub packages
+      - shim-signed-
+
+  - action: run
+    description: Create task to grow root filesystem on first boot
+    chroot: true
+    command: |
+      set -eu
+      # for growpart
+      apt -y install cloud-guest-utils
+      # extract the dev of the root filesystem from fstab; change UUID=id into
+      # /dev/disk/by-uuid/id
+      ROOTFS_DEV=$(
+          awk '$2 == "/" {gsub("UUID=", "/dev/disk/by-uuid/"); print $1}' \
+              /etc/fstab
+          )
+      # generate systemd unit to grow the second partition with above UUID
+      cat >/etc/systemd/system/debos-grow-rootfs.service <<EOF
+      [Unit]
+      Description=Grow root partition and filesystem (debos)
+      [Service]
+      Type=oneshot
+      ExecStartPre=-sh -c 'growpart /dev/\`lsblk -n -o pkname $ROOTFS_DEV\` 2'
+      ExecStart=resize2fs $ROOTFS_DEV
+      [Install]
+      WantedBy=default.target
+      EOF
+      # enable unit
+      systemctl enable debos-grow-rootfs
+

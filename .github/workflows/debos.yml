@@ -40,6 +40,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # make sure we have latest packages first, to get latest fixes and to
+      # avoid an automated update while we're building
+      - name: Update OS packages
+        run: |
+          set -x
+          sudo apt update
+          sudo apt -y upgrade
+          sudo apt -y full-upgrade
+
       # this is the default in our self-hosted runners
       - name: Make sure Incus is setup
         run: |

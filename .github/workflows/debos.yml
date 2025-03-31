@@ -74,8 +74,9 @@ jobs:
                # these commands are run inside the container
                cat <<EOF
                apt update
-               apt upgrade -y
-               apt install -y debos
+               apt -y upgrade
+               apt -y full-upgrade
+               apt -y install debos
            EOF
            ) | sudo incus exec "${INCUS_NAME}" -- sh
 

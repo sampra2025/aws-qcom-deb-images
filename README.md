@@ -21,7 +21,11 @@ main: Primary development branch. Contributors should develop submissions based 
 
 To build a disk image, run debos as follows:
 ```bash
-debos debos-recipes/qualcomm-linux-debian.yaml
+# build a root filesystem tarball
+debos debos-recipes/qualcomm-linux-debian-rootfs.yaml
+
+# build a disk image from the root filesystem
+debos debos-recipes/qualcomm-linux-debian-image.yaml
 ```
 
 ### Build backends
@@ -30,21 +34,24 @@ By default, debos will try to pick a fast build backend; it will try to use its 
 
 To build large images, the debos resource defaults might not be sufficient. Consider raising the default debos memory and scratchsize settings. This should provide a good set of minimum defaults:
 ```bash
-debos --fakemachine-backend qemu --memory 1GiB --scratchsize 4GiB debos-recipes/qualcomm-linux-debian.yaml
+debos --fakemachine-backend qemu --memory 1GiB --scratchsize 4GiB debos-recipes/qualcomm-linux-debian-image.yaml
 ```
 
 ### Build options
 
-A few options are provided in the debos recipe:
+A few options are provided in the debos recipes; for the root filesystem recipe:
+- experimentalkernel: update the linux kernel to the version from experimental; default: don't update the kernel
+- xfcedesktop: install a Xfce desktop environment; default: console only environment
+
+For the image recipe:
+- dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
 - image: set the output disk image filename; default: `disk.img`
 - imagesize: set the output disk image size; default: `4GiB`
-- dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
-- xfcedesktop: install a Xfce desktop environment; default: console only environment
-- experimentalkernel: update the linux kernel to the version from experimental; default: don't update the kernel
 
 These can be passed as follows:
 ```bash
-debos -t dtb:qcom/qcs6490-rb3gen2.dtb -t xfcedesktop:true -t experimentalkernel:true debos-recipes/qualcomm-linux-debian.yaml
+debos -t xfcedesktop:true -t experimentalkernel:true debos-recipes/qualcomm-linux-debian-rootfs.yaml
+debos -t dtb:qcom/qcs6490-rb3gen2.dtb debos-recipes/qualcomm-linux-debian-image.yaml
 ```
 
 ## Flashing Instructions

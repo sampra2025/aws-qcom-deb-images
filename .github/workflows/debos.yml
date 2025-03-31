@@ -90,13 +90,15 @@ jobs:
               # these commands are run inside the container
               cat <<EOF
               cd /build
+              # start by building the root filesystem
+              debos qualcomm-linux-debian-rootfs.yaml
               # debos tries KVM and UML as backends, and falls back to building
               # directly on the host, but that requires loop devices; use
               # qemu backend explicitly even if it's slower
               # qemu backend also requires to set scratchsize, otherwise
               # the whole build is done from memory and the out of memory
               # killer gets triggered
-              debos -b qemu --scratchsize 4GiB qualcomm-linux-debian.yaml
+              debos -b qemu --scratchsize 4GiB qualcomm-linux-debian-image.yaml
           EOF
           ) | sudo incus exec "${INCUS_NAME}" -- sh
 

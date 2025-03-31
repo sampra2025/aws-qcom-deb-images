@@ -13,7 +13,7 @@ main: Primary development branch. Contributors should develop submissions based 
 ## Requirements
 
 [debos](https://github.com/go-debos/debos) is required to build the debos recipes. Recent debos packages should be available in Debian and Ubuntu repositories; there are 
-[debos installation instructions](https://github.com/go-debos/debos?tab=readme-ov-file#installation-from-source-under-debian) on the project's page, notably for Docker images and to build debos from source.
+[debos installation instructions](https://github.com/go-debos/debos?tab=readme-ov-file#installation-from-source-under-debian) on the project's page, notably for Docker images and to build debos from source. Make sure to use at least version 1.1.5 which supports setting the sector size.
 
 [qdl](https://github.com/linux-msm/qdl) is typically used for flashing. While recent versions are available in Debian and Ubuntu, make sure you have at least version 2.1 as it contains important fixes.
 
@@ -45,7 +45,8 @@ A few options are provided in the debos recipes; for the root filesystem recipe:
 
 For the image recipe:
 - dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
-- image: set the output disk image filename; default: `disk.img`
+- imagetype: either `ufs` (the default) or (`sdcard`); UFS uses 4096 bytes sectors and SD card 512 bytes
+- image: set the output disk image filename; default is to suffix it with the imagetype: `disk-ufs.img`
 - imagesize: set the output disk image size; default: `4GiB`
 
 These can be passed as follows:
@@ -61,16 +62,12 @@ Once a disk image is created, it is suitable for putting on an SD card, albeit m
 
 These images don't currently ambition to provide early boot assets such as boot firmware or data for other partitions containing board specific configuration or coprocessor firmware. Instead, start by provisioning an image with these early boot assets, such as the Yocto-based Qualcomm Linux images, and then flashing a debos generated image on top. Standalone, ready to flash (but probably not Debian based) images of the boot assets are planned to be made available publicly – stay tuned!
 
-Depending on the target board and target boot media, it's also necessary to use the right sector size for the image: typically 512B vs 4096B. SD cards and eMMC typically use the historical 512B sector size, while UFS storage uses 4096B sector size. debos has just gained support for configurable sector sizes, but that requires building it from source; alernatively, you can post-process the image with a conversation script as explained below.
+Depending on the target board and target boot media, it's also necessary to use the right sector size for the image: typically 512B vs 4096B. SD cards and eMMC typically use the historical 512B sector size, while UFS storage uses 4096B sector size. debos has gained support for configurable sector sizes in version 1.1.5.
 
 ### RB3 Gen2 instructions
 
 The RB3 Gen2 board boots from UFS by default. To flash a disk image to the UFS storage of the RB3 Gen2 board:
 1. provision some known good early boot assets by flashing the Yocto edition of [Qualcomm Linux](https://www.qualcomm.com/developer/software/qualcomm-linux)
-1. unless you've got a recent debos that supports creating images with a 4096B sector size, convert the debos disk image from 512B to 4096B sector sizes; this sample script can be used as a workaround until [debos gains support for setting the sector size](https://github.com/go-debos/debos/issues/537) but it's a britle approach which requires root, the workaround script is also full of hardcoded expectations and might need local tweaks:
-    ```bash
-    sudo scripts/workaround-convert-sector-size disk.img disk-4096.img 4096
-    ```
 1. create a `rawprogram-ufs.xml` file instructing QDL to flash to the first UFS LUN (LUN0):
     ```xml
     <?xml version="1.0" ?>

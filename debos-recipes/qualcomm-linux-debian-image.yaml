@@ -1,8 +1,10 @@
 {{- $dtb := or .dtb "firmware" }}
-{{- $image := or .image "disk.img" }}
 {{- $imagesize := or .imagesize "4GiB" }}
+{{- $imagetype := or .imagetype "ufs" }}
+{{- $image := or .image (printf "disk-%s.img" $imagetype) }}
 
 architecture: arm64
+sectorsize: {{if eq $imagetype "ufs"}} 4096 {{else}} 512 {{end}}
 
 actions:
   - action: unpack

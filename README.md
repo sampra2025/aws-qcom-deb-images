@@ -45,8 +45,7 @@ A few options are provided in the debos recipes; for the root filesystem recipe:
 
 For the image recipe:
 - dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
-- imagetype: either `ufs` (the default) or (`sdcard`); UFS uses 4096 bytes sectors and SD card 512 bytes
-- image: set the output disk image filename; default is to suffix it with the imagetype: `disk-ufs.img`
+- imagetype: either `ufs` (the default) or (`sdcard`); UFS images are named disk-ufs.img and use 4096 bytes sectors and SD card images are named disk-sdcard.img and use 512 bytes sectors
 - imagesize: set the output disk image size; default: `4GiB`
 
 These can be passed as follows:

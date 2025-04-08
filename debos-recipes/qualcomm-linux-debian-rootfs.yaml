@@ -18,8 +18,10 @@ actions:
     description: Modernize APT sources
     chroot: true
     command: |
+      set -eu
       apt modernize-sources -y
       rm /etc/apt/sources.list.bak
+
   - action: apt
     description: Install foundational packages
     recommends: true
@@ -47,9 +49,11 @@ actions:
     description: Set hostname to "debian"
     chroot: true
     command: |
+      set -eu
       echo debian >/etc/hostname
       # /etc/hosts is created by netbase
       sed -i "1s/^/127.0.1.1	debian\n/" /etc/hosts
+
   - action: run
     description: Add a "debian" user, add it to sudoers and various groups
     chroot: true

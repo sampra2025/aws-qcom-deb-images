@@ -37,7 +37,7 @@ jobs:
     container:
       image: debian:trixie
       volumes:
-        - /srv/gh-runners/quic-yocto/builds:/builds
+        - /srv/gh-runners/quic-yocto/builds:/fileserver-builds
       options: --privileged
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
           # create an unique id with repository, run id, and run attempt
           id="${GITHUB_REPOSITORY}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           # create a directory for the current run
-          dir="/build/${id}"
+          dir="/fileserver-builds/${id}"
           mkdir -vp "${dir}"
           # copy output files
           cp -v disk-ufs.img.gz "${dir}"

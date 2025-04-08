@@ -72,7 +72,7 @@ The RB3 Gen2 board boots from UFS by default. To flash a disk image to the UFS s
     ```xml
     <?xml version="1.0" ?>
     <data>
-      <program SECTOR_SIZE_IN_BYTES="4096" file_sector_offset="0" filename="disk-4096.img" label="image" num_partition_sectors="0" partofsingleimage="false" physical_partition_number="0" start_sector="0"/>
+      <program SECTOR_SIZE_IN_BYTES="4096" file_sector_offset="0" filename="disk-ufs.img" label="image" num_partition_sectors="0" partofsingleimage="false" physical_partition_number="0" start_sector="0"/>
     </data>
     ```
 1. put the board in "emergency download" mode (EDL) by removing any cable from the USB type-C port, and pressing the `F_DL` button while turning the power on

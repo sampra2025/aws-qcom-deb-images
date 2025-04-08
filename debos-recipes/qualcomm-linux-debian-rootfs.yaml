@@ -19,7 +19,7 @@ actions:
     chroot: true
     command: |
       set -eux
-      apt modernize-sources -y
+      apt -y modernize-sources
       rm -v /etc/apt/sources.list.bak
 
   - action: apt
@@ -183,7 +183,7 @@ actions:
       EOF
       # update and install kernel from experimental
       apt update
-      apt install -y -t experimental linux-image-arm64
+      apt -y install -t experimental linux-image-arm64
       # disable experimental from APT sources
       sed -i "1s/^/Enabled: no\n/" \
           /etc/apt/sources.list.d/debian-experimental.sources

@@ -18,8 +18,10 @@ actions:
     description: Modernize APT sources
     chroot: true
     command: |
-      apt modernize-sources -y
-      rm /etc/apt/sources.list.bak
+      set -eux
+      apt -y modernize-sources
+      rm -v /etc/apt/sources.list.bak
+
   - action: apt
     description: Install foundational packages
     recommends: true
@@ -47,14 +49,16 @@ actions:
     description: Set hostname to "debian"
     chroot: true
     command: |
+      set -eux
       echo debian >/etc/hostname
       # /etc/hosts is created by netbase
       sed -i "1s/^/127.0.1.1	debian\n/" /etc/hosts
+
   - action: run
     description: Add a "debian" user, add it to sudoers and various groups
     chroot: true
     command: |
-      set -eu
+      set -eux
       # pre-emptively create a sudo group if sudo isn't installed
       getent group sudo >/dev/null 2>&1 || groupadd --system sudo
       # some of these groups are only needed for desktop scenarios
@@ -64,7 +68,8 @@ actions:
       chage --lastday 0 debian
       echo debian:debian | chpasswd
       # add to sudoers
-      mkdir --mode 755 --parents /etc/sudoers.d
+      mkdir -v --mode 755 --parents /etc/sudoers.d
+      # subshell to override umask
       (
         umask 226
         echo "debian ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/90-debos
@@ -144,7 +149,7 @@ actions:
     description: Set default locale
     chroot: true
     command: |
-      set -eu
+      set -eux
       if which locale-gen >/dev/null 2>&1; then
           echo en_US.UTF-8 UTF-8 >>/etc/locale.gen
           locale-gen en_US.UTF-8 UTF-8
@@ -167,7 +172,7 @@ actions:
     description: Install Linux kernel from experimental
     chroot: true
     command: |
-      set -eu
+      set -eux
       # add experimental APT sources
       cat >/etc/apt/sources.list.d/debian-experimental.sources <<EOF
       Types: deb
@@ -178,7 +183,7 @@ actions:
       EOF
       # update and install kernel from experimental
       apt update
-      apt install -y -t experimental linux-image-arm64
+      apt -y install -t experimental linux-image-arm64
       # disable experimental from APT sources
       sed -i "1s/^/Enabled: no\n/" \
           /etc/apt/sources.list.d/debian-experimental.sources

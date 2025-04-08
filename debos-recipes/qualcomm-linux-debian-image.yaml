@@ -1,7 +1,7 @@
 {{- $dtb := or .dtb "firmware" }}
 {{- $imagesize := or .imagesize "4GiB" }}
 {{- $imagetype := or .imagetype "ufs" }}
-{{- $image := or .image (printf "disk-%s.img" $imagetype) }}
+{{- $image := printf "disk-%s.img" $imagetype }}
 
 architecture: arm64
 sectorsize: {{if eq $imagetype "ufs"}} 4096 {{else}} 512 {{end}}
@@ -17,9 +17,9 @@ actions:
     description: Use OS device tree override (board specific)
     chroot: true
     command: |
-      set -eu
-      mkdir -p /etc/kernel
-      echo {{ $dtb }} >/etc/kernel/devicetree
+      set -eux
+      mkdir -pv /etc/kernel
+      echo "{{ $dtb }}" >/etc/kernel/devicetree
 {{- end }}
 
   # parttype values are from:
@@ -72,7 +72,7 @@ actions:
     description: Create task to grow root filesystem on first boot
     chroot: true
     command: |
-      set -eu
+      set -eux
       # for growpart
       apt -y install cloud-guest-utils
       # extract the dev of the root filesystem from fstab; change UUID=id into
@@ -97,5 +97,5 @@ actions:
 
   - action: run
     postprocess: true
-    command: gzip -f "${ARTIFACTDIR}/{{ $image }}"
+    command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"
 

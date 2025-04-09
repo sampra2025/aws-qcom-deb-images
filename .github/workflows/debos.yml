@@ -52,7 +52,9 @@ jobs:
           apt update
           apt -y upgrade
           apt -y full-upgrade
-          apt -y install debos
+          # debos is needed to build recipes, mtools is needed for the flash
+          # recipe
+          apt -y install debos mtools
 
       - name: Build debos recipe
         run: |
@@ -69,6 +71,8 @@ jobs:
               qualcomm-linux-debian-image.yaml
           debos -b qemu --scratchsize 4GiB -t imagetype:sdcard \
               qualcomm-linux-debian-image.yaml
+          # build flashable files
+          debos qualcomm-linux-debian-flash.yaml
 
       - name: Upload artifacts to fileserver
         run: |
@@ -83,8 +87,11 @@ jobs:
           dir="/fileserver-builds/${id}"
           mkdir -vp "${dir}"
           # copy output files
-          cp -v disk-ufs.img.gz "${dir}"
-          cp -v disk-sdcard.img.gz "${dir}"
+          cp -av rootfs.tar.gz "${dir}"
+          cp -av dtbs.tar.gz "${dir}"
+          cp -av disk-ufs.img.gz "${dir}"
+          cp -av disk-sdcard.img.gz "${dir}"
+          tar -cvf "${dir}"/flash.tar.gz disk-ufs.img1 disk-ufs.img2 flash_*
           # instruct fileserver to publish this directory
           url="${FILESERVER_URL}/${id}/"
           curl -X POST -H 'Accept: text/event-stream' "${url}"

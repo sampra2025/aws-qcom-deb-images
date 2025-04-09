@@ -5,6 +5,7 @@ architecture: arm64
 
 actions:
   - action: debootstrap
+    description: Bootstrap initial filesystem
     # NB: not currently configurable
     suite: trixie
     components:
@@ -190,6 +191,7 @@ actions:
 {{- end }}
 
   - action: pack
+    description: Create root filesystem tarball
     file: rootfs.tar.gz
     compression: gz
 

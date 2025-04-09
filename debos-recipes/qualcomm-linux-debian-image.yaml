@@ -97,6 +97,20 @@ actions:
       systemctl enable debos-grow-rootfs
 
   - action: run
+    description: Extract partition images
+    postprocess: true
+    command: |
+      set -eux
+      sector_size="{{if eq $imagetype "ufs"}}4096{{else}}512{{end}}"
+      image="{{ $image }}"
+      fdisk -b "${sector_size}" -l "${image}" |
+          sed -n '1,/^Device/ d; p' |
+          while read name start end sectors rest; do
+              dd if="${image}" of="${ARTIFACTDIR}/${name}" \
+                  bs="${sector_size}" skip="${start}" count="${sectors}"
+          done
+
+  - action: run
     description: Compress image file
     postprocess: true
     command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"

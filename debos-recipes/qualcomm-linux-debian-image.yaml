@@ -96,6 +96,7 @@ actions:
       systemctl enable debos-grow-rootfs
 
   - action: run
+    description: Compress image file
     postprocess: true
     command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"
 

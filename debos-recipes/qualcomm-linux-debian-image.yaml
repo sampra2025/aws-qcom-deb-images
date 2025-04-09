@@ -4,7 +4,7 @@
 {{- $image := printf "disk-%s.img" $imagetype }}
 
 architecture: arm64
-sectorsize: {{if eq $imagetype "ufs"}} 4096 {{else}} 512 {{end}}
+sectorsize: {{if eq $imagetype "ufs"}}4096{{else}}512{{end}}
 
 actions:
   - action: unpack

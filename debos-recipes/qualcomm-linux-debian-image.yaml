@@ -4,7 +4,7 @@
 {{- $image := printf "disk-%s.img" $imagetype }}
 
 architecture: arm64
-sectorsize: {{if eq $imagetype "ufs"}} 4096 {{else}} 512 {{end}}
+sectorsize: {{if eq $imagetype "ufs"}}4096{{else}}512{{end}}
 
 actions:
   - action: unpack
@@ -56,12 +56,13 @@ actions:
 
   # XXX these kernel options might be specific to a kernel version or board
   - action: filesystem-deploy
+    description: Deploy root filesystem to mounted image
     setup-fstab: true
     append-kernel-cmdline: clk_ignore_unused pd_ignore_unused audit=0 deferred_probe_timeout=30
 
   - action: apt
-    recommends: true
     description: Make system bootable with systemd-boot
+    recommends: true
     packages:
       - systemd-boot
       # TODO investigate why systemd-boot Recommends: shim-signed which
@@ -96,6 +97,21 @@ actions:
       systemctl enable debos-grow-rootfs
 
   - action: run
+    description: Extract partition images
+    postprocess: true
+    command: |
+      set -eux
+      sector_size="{{if eq $imagetype "ufs"}}4096{{else}}512{{end}}"
+      image="{{ $image }}"
+      fdisk -b "${sector_size}" -l "${image}" |
+          sed -n '1,/^Device/ d; p' |
+          while read name start end sectors rest; do
+              dd if="${image}" of="${ARTIFACTDIR}/${name}" \
+                  bs="${sector_size}" skip="${start}" count="${sectors}"
+          done
+
+  - action: run
+    description: Compress image file
     postprocess: true
     command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"
 

@@ -5,6 +5,7 @@ architecture: arm64
 
 actions:
   - action: debootstrap
+    description: Bootstrap initial filesystem
     # NB: not currently configurable
     suite: trixie
     components:
@@ -189,7 +190,25 @@ actions:
           /etc/apt/sources.list.d/debian-experimental.sources
 {{- end }}
 
+  - action: run
+    description: Create DTBs tarball
+    chroot: false
+    command: |
+      set -eux
+      # find the highest kernel version installed; kernels are backwards
+      # compatible with older dtbs, so it would make sense to take dtbs from
+      # the oldest available kernel as to allow all kernels to boot, but if
+      # this image has pulled a more recent kernel, it's probably to gain
+      # support for new hardware which would happen through new or updated dtbs
+      # only in that new kernel, so use the latest dtbs
+      latest_kernel="$(
+          ls -d "$ROOTDIR"/usr/lib/linux-image-* | sort -V | tail -1)"
+      tar -C "${latest_kernel}" -cvzf "$ARTIFACTDIR/dtbs.tar.gz" \
+          qcom/qcs6490-rb3gen2.dtb \
+          qcom/qrb2210-rb1.dtb
+
   - action: pack
+    description: Create root filesystem tarball
     file: rootfs.tar.gz
     compression: gz
 

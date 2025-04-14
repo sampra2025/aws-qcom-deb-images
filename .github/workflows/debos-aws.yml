@@ -31,7 +31,7 @@ concurrency:
 jobs:
   build-debos:
     runs-on:
-      - codebuild-QualcommLinux-Qcom-Deb-${{ github.run_id }}-${{ github.run_attempt }}
+      - codebuild-QualcommLinux-Qcom-Deb_DefaultVPC-${{ github.run_id }}-${{ github.run_attempt }}
       - buildspec-override:true #This tells our self-hosted runner to upload artifacts
     container:
       image: public.ecr.aws/docker/library/debian:trixie

@@ -1,6 +1,8 @@
 name: Build debos recipe in AWS
 
 on:
+  # allow manual runs
+  workflow_dispatch:
   # run on pull requests to the main branch
   pull_request:
     branches: [main]
@@ -10,9 +12,7 @@ on:
   # run daily at 8:30am
   schedule:
     - cron: '30 8 * * *'
-  # allow manual runs
-  workflow_dispatch:
-
+  
 # only need permission to read repository; implicitely set all other
 # permissions to none
 permissions:

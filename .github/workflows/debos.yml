@@ -2,14 +2,14 @@ name: Build debos recipe
 
 on:
   # run on pull requests to the main branch
-  pull_request:
-    branches: [main]
+#  pull_request:
+#    branches: [main]
   # run on pushes to the main branch
-  push:
-    branches: [main]
+#  push:
+#    branches: [main]
   # run daily at 8:30am
-  schedule:
-    - cron: '30 8 * * *'
+#  schedule:
+#    - cron: '30 8 * * *'
   # allow manual runs
   workflow_dispatch:
 

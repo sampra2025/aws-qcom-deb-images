@@ -50,9 +50,12 @@ A few options are provided in the debos recipes; for the root filesystem recipe:
 - `xfcedesktop`: install a Xfce desktop environment; default: console only environment
 
 For the image recipe:
-- dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
-- imagetype: either `ufs` (the default) or (`sdcard`); UFS images are named disk-ufs.img and use 4096 bytes sectors and SD card images are named disk-sdcard.img and use 512 bytes sectors
-- imagesize: set the output disk image size; default: `4GiB`
+- `dtb`: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override
+- `imagetype`: either `ufs` (the default) or (`sdcard`); UFS images are named disk-ufs.img and use 4096 bytes sectors and SD card images are named disk-sdcard.img and use 512 bytes sectors
+- `imagesize`: set the output disk image size; default: `4GiB`
+
+For the flash recipe:
+- `u_boot_rb1`: prebuilt U-Boot binary for RB1 in Android boot image format -- see below (NB: debos expects relative pathnames)
 
 Here are some example invocations:
 ```bash

@@ -106,7 +106,12 @@ jobs:
           cp -av dtbs.tar.gz "${dir}"
           cp -av disk-ufs.img.gz "${dir}"
           cp -av disk-sdcard.img.gz "${dir}"
-          tar -cvf "${dir}"/flash.tar.gz disk-ufs.img1 disk-ufs.img2 flash_*
+          tar -cvf "${dir}"/flash.tar.gz \
+              disk-ufs.img1 \
+              disk-ufs.img2 \
+              disk-sdcard.img1 \
+              disk-sdcard.img2 \
+              flash_*
           # instruct fileserver to publish this directory
           url="${FILESERVER_URL}/${id}/"
           curl -X POST -H 'Accept: text/event-stream' "${url}"

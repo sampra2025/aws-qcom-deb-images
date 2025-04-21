@@ -45,8 +45,9 @@ debos --fakemachine-backend qemu --memory 1GiB --scratchsize 4GiB debos-recipes/
 ### Build options
 
 A few options are provided in the debos recipes; for the root filesystem recipe:
-- experimentalkernel: update the linux kernel to the version from experimental; default: don't update the kernel
-- xfcedesktop: install a Xfce desktop environment; default: console only environment
+- `experimentalkernel`: update the linux kernel to the version from experimental; default: don't update the kernel
+- `localdebs`: path to a directory with local deb packages to install (NB: debos expects relative pathnames)
+- `xfcedesktop`: install a Xfce desktop environment; default: console only environment
 
 For the image recipe:
 - dtb: override the firmware provided device tree with one from the linux kernel, e.g. `qcom/qcs6490-rb3gen2.dtb`; default: don't override

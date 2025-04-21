@@ -1,5 +1,6 @@
 {{- $xfcedesktop := or .xfcedesktop "false" }}
 {{- $experimentalkernel := or .experimentalkernel "false" }}
+{{- $localdebs := or .localdebs "none" }}
 
 architecture: arm64
 
@@ -188,6 +189,20 @@ actions:
       # disable experimental from APT sources
       sed -i "1s/^/Enabled: no\n/" \
           /etc/apt/sources.list.d/debian-experimental.sources
+{{- end }}
+
+{{- if ne $localdebs "none" }}
+  - action: overlay
+    description: Overlay local debs directory {{ $localdebs }} to /root/
+    source: {{ $localdebs }}
+    destination: /root/
+
+  - action: run
+    description: Install local debs from /root/
+    chroot: yes
+    command: |
+      set -eux
+      apt -y install /root/*.deb
 {{- end }}
 
   - action: run

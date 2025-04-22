@@ -191,6 +191,15 @@ actions:
           /etc/apt/sources.list.d/debian-experimental.sources
 {{- end }}
 
+  # this is currently needed on boards such as RB1 which are using Android
+  # bootloader to check the boot count of the boot_a/boot_b partitions
+  - action: apt
+    description: Support boards chainloading from Android bootloader
+    recommends: true
+    packages:
+      # marks the current Android boot partition as booted successfully
+      - qbootctl
+
 {{- if ne $localdebs "none" }}
   - action: overlay
     description: Overlay local debs directory {{ $localdebs }} to /root/

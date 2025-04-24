@@ -12,37 +12,83 @@ main: Primary development branch. Contributors should develop submissions based 
 
 ## Requirements
 
-[debos](https://github.com/go-debos/debos) is required to build the debos recipes. Recent debos packages should be available in Debian and Ubuntu repositories; there are 
-[debos installation instructions](https://github.com/go-debos/debos?tab=readme-ov-file#installation-from-source-under-debian) on the project's page, notably for Docker images and to build debos from source. Make sure to use at least version 1.1.5 which supports setting the sector size.
+[debos](https://github.com/go-debos/debos) is required to build the debos recipes. Recent debos packages should be available in Debian and Ubuntu repositories; there are [debos installation instructions](https://github.com/go-debos/debos?tab=readme-ov-file#installation-from-source-under-debian) on the project's page, notably for Docker images and to build debos from source. Make sure to use at least version 1.1.5 which supports setting the sector size.
 
 [qdl](https://github.com/linux-msm/qdl) is typically used for flashing. While recent versions are available in Debian and Ubuntu, make sure to use at least version 2.1 as it contains important fixes.
 
+### Optional requirements
+
+Building U-Boot for the RB1 requires the following build-dependencies:
+```bash
+apt -y install git crossbuild-essential-arm64 make bison flex bc libssl-dev gnutls-dev xxd coreutils gzip mkbootimg
+```
+
+Building a Linux kernel deb requires the following build-dependencies:
+```bash
+apt -y install git crossbuild-essential-arm64 make flex bison bc libelf-dev libssl-dev libssl-dev:arm64 dpkg-dev debhelper-compat kmod python3 rsync coreutils
+```
+
 ## Usage
 
-To build flashable assets, run debos as follows:
-```bash
-# build tarballs of the root filesystem and DTBs
-debos debos-recipes/qualcomm-linux-debian-rootfs.yaml
+To build flashable assets for all supported boards, follow these steps:
 
-# build disk and filesystem images from the root filesystem; the default is to
-# build an UFS image
-debos debos-recipes/qualcomm-linux-debian-image.yaml
+1. (optional) build U-Boot for the RB1
+    ```bash
+    scripts/build-u-boot-rb1.sh
+    ```
 
-# build flashable assets from the DTBs and UFS filesystem images; currently these
-# are only built for the RB3 Gen2 Vision Kit board
-debos debos-recipes/qualcomm-linux-debian-flash.yaml
-```
+1. (optional) build a local Linux kernel deb from mainline with a recommended config fragment
+    ```bash
+    scripts/build-linux-deb.sh kernel-configs/systemd-boot.config
+    ```
+
+1. build tarballs of the root filesystem and DTBs
+    ```bash
+    debos debos-recipes/qualcomm-linux-debian-rootfs.yaml
+
+    # (optional) if you've built a local kernel, copy it to local-debs/ and run
+    # this instead:
+    #debos -t localdebs:local-debs/ debos-recipes/qualcomm-linux-debian-rootfs.yaml
+    ```
+
+1. build disk and filesystem images from the root filesystem tarball
+    ```bash
+    # the default is to build an UFS image
+    debos debos-recipes/qualcomm-linux-debian-image.yaml
+
+    # (optional) if you want SD card images or support for eMMC boards, run
+    # this as well:
+    debos -t imagetype:sdcard debos-recipes/qualcomm-linux-debian-image.yaml
+    ```
+
+1. build flashable assets from downloaded boot binaries, the DTBs, and pointing at the UFS/SD card disk images
+    ```bash
+    debos debos-recipes/qualcomm-linux-debian-flash.yaml
+
+    # (optional) if you've built U-Boot for the RB1, run this instead:
+    #debos -t u_boot_rb1:u-boot/rb1-boot.img debos-recipes/qualcomm-linux-debian-flash.yaml
+    ```
+
+1. enter Emergency Download Mode (see section below) and flash the resulting images with QDL
+    ```bash
+    # for RB3 Gen2 Vision Kit or UFS boards in general
+    cd flash_rb3gen2-vision-kit
+    qdl --storage ufs prog_firehose_ddr.elf rawprogram[0-9].xml patch[0-9].xml
+
+    # for RB1 or eMMC boards in general
+    qdl --allow-missing --storage emmc prog_firehose_ddr.elf rawprogram[0-9].xml patch[0-9].xml
+    ```
 
 ### Debos tips
 
-By default, debos will try to pick a fast build backend; it will try to use its KVM backend ("-b kvm") when available, and otherwise an UML environment ("-b uml"). If none of these work, a solid backend is QEMU ("-b qemu"); because the target images are arm64, this can be really slow when building from another architecture such as amd64.
+By default, debos will try to pick a fast build backend. It will prefer to use its KVM backend (`-b kvm`) when available, and otherwise an UML environment (`-b uml`). If none of these work, a solid backend is QEMU (`-b qemu`). Because the target images are arm64, building under QEMU can be really slow, especially when building from another architecture such as amd64.
 
 To build large images, the debos resource defaults might not be sufficient. Consider raising the default debos memory and scratchsize settings. This should provide a good set of minimum defaults:
 ```bash
 debos --fakemachine-backend qemu --memory 1GiB --scratchsize 4GiB debos-recipes/qualcomm-linux-debian-image.yaml
 ```
 
-### Build options
+### Options for debos recipes
 
 A few options are provided in the debos recipes; for the root filesystem recipe:
 - `experimentalkernel`: update the linux kernel to the version from experimental; default: don't update the kernel
@@ -70,12 +116,11 @@ debos -t dtb:qcom/qcs6490-rb3gen2.dtb debos-recipes/qualcomm-linux-debian-image.
 debos -t imagetype:sdcard debos-recipes/qualcomm-linux-debian-image.yaml
 ```
 
-## Flashing Instructions
-### Overview
+### Flashing tips
 
 The `disk-sdcard.img` disk image can simply be written to a SD card, albeit most Qualcomm boards boot from internal storage by default. With an SD card, the board will use boot firmware from internal storage (eMMC or UFS) and do an EFI boot from the SD card if the firmware can't boot from internal storage.
 
-If there is no need to update the boot firmware, the `disk-ufs.img` disk image can also be flashed on the first LUN of the internal UFS storage with [qdl](https://github.com/linux-msm/qdl). Create a `rawprogram-ufs.xml` file as follows:
+For UFS boards, if there is no need to update the boot firmware, the `disk-ufs.img` disk image can also be flashed on the first LUN of the internal UFS storage with [qdl](https://github.com/linux-msm/qdl). Create a `rawprogram-ufs.xml` file as follows:
 ```xml
 <?xml version="1.0" ?>
 <data>
@@ -86,14 +131,7 @@ Put the board in "emergency download mode" (EDL; see next section) and run:
 ```bash
 qdl --storage ufs prog_firehose_ddr.elf rawprogram-ufs.xml
 ```
-Make sure to use `prog_firehose_ddr.elf` for the target platform, such as this [version from the QCM6490 boot binaries](https://softwarecenter.qualcomm.com/download/software/chip/qualcomm_linux-spf-1-0/qualcomm-linux-spf-1-0_test_device_public/r1.0_00058.0/qcm6490-le-1-0/common/build/ufs/bin/QCM6490_bootbinaries.zip).
-
-To flash a complete set of assets on UFS internal storage, put the board in EDL mode and run:
-```bash
-# use the RB3 Gen2 Vision Kit flashable assets
-cd flash_rb3gen2-vision-kit
-qdl --storage ufs prog_firehose_ddr.elf rawprogram[0-9].xml patch[0-9].xml
-```
+Make sure to use `prog_firehose_ddr.elf` for the target platform, such as this [version from the QCM6490 boot binaries](https://softwarecenter.qualcomm.com/download/software/chip/qualcomm_linux-spf-1-0/qualcomm-linux-spf-1-0_test_device_public/r1.0_00058.0/qcm6490-le-1-0/common/build/ufs/bin/QCM6490_bootbinaries.zip) or this [version from the RB1 rescue image](https://releases.linaro.org/96boards/rb1/linaro/rescue/23.12/rb1-bootloader-emmc-linux-47528.zip).
 
 ### Emergency Download Mode (EDL)
 
@@ -108,144 +146,6 @@ To enter EDL mode:
 1. run qdl to flash the board
 
 NB: It's also possible to run qdl from the host while the baord is not connected, and starting the board directly in EDL mode.
-
-### RB1 instructions (alpha)
-
-The RB1 board boots from eMMC by default and uses an Android style boot architecture. Read-on to flash a disk image to the eMMC storage of the RB1 board and emulate an UEFI boot architecture.
-
-#### Build disk-sdcard.img with debos
-As above, build a SD card image as it's using a 512 sector size, like eMMC on the RB1:
-```bash
-debos \
-    --fakemachine-backend qemu \
-    --memory 1GiB \
-    --scratchsize 4GiB \
-    -t xfcedesktop:true \
-    debos-recipes/qualcomm-linux-debian-rootfs.yaml
-debos \
-    --fakemachine-backend qemu \
-    --memory 1GiB \
-    --scratchsize 4GiB \
-    -t dtb:qcom/qrb2210-rb1.dtb \
-    -t imagetype:sdcard \
-    debos-recipes/qualcomm-linux-debian-image.yaml
-```
-
-#### Build U-Boot with RB1 support
-
-U-Boot will be chainloaded from the first Android boot partition.
-
-A convenience shell script is provided to checkout the relevant U-Boot branch and to build U-Boot for RB1 and wrap it in an Android boot image.
-
-```bash
-sudo apt install git build-essential crossbuild-essential-arm64 flex bison \
-    libssl-dev gnutls-dev mkbootimg
-
-scripts/build-u-boot-rb1.sh
-```
-
-#### Build an upstream Linux kernel to workaround boot issues
-
-Linux 6.14 or later will just work, but 6.13 kernels need `CONFIG_CLK_QCM2290_GPUCC=m` ([upstream submission](https://lore.kernel.org/linux-arm-msm/20250214-rb1-enable-gpucc-v1-1-346b5b579fca@linaro.org/))
-
-In any case, make sure to set `CONFIG_EFI_ZBOOT=y` as [systemd-boot won't implement support for compressed images (zImage)](https://github.com/systemd/systemd/issues/23788); the kernel config fragment in `kernel-configs/systemd-boot.config` does this.
-
-1. A convenience shell script is provided to checkout the latest kernel and build a deb package from it with the above config.
-    ```bash
-    sudo apt install git crossbuild-essential-arm64 make flex bison bc \
-        libelf-dev libssl-dev dpkg-dev debhelper-compat kmod python3 rsync \
-        coreutils
-    scripts/build-linux-deb.sh kernel-configs/systemd-boot.config
-    ```
-
-1. on an arm64 capable machine, chroot into the disk image's root filesystem, mount the ESP and install the kernel
-    ```bash
-    # this mounts the image and starts a shell in the chroot
-    host% sudo scripts/disk-image-edit.sh disk-sdcard.img 512
-    chroot#
-
-    # in another shell on the host, copy the kernel .deb to /mnt/root
-    host% chroot sudo cp linux-image-6.13.0_6.13.0-1_arm64.deb /mnt/root/
-
-    # from within the chroot, mount ESP and install the kernel
-    chroot# mount /boot/efi
-    chroot# dpkg -i /root/linux-image-6.13.0_6.13.0-1_arm64.deb
-    # uncompress the kernel as systemd-boot doesn’t handle these
-    chroot# zcat /boot/efi/*/6.13*/linux >/tmp/linux
-    chroot# mv /tmp/linux /boot/efi/*/6.13*/linux
-    # update systemd entry to point at uncompressed kernel
-    vi /boot/efi/…
-    chroot# umount /boot/efi
-
-    # leave chroot and unmount image
-    chroot# exit
-    ```
-
-#### Extract the root and ESP partitions from the disk image
-
-This will create disk-sdcard.img1 and disk-sdcard.img2:
-```bash
-fdisk -l disk-sdcard.img | sed -n '1,/^Device/ d; p' |
-    while read name start end sectors rest; do
-        dd if=disk-sdcard.img of="${name}" bs=512 skip="${start}" count="${sectors}"
-    done
-```
-
-#### Prepare a flashable image
-
-1. download and unpack the [Linux eMMC RB1 recovery image version 23.12 from Linaro](https://releases.linaro.org/96boards/rb1/linaro/rescue/23.12/)
-
-1. edit rawprogram0.xml and change the filename for the following partitions to these values to match files generated earlier:
-
-|label|filename|
-|---|---|
-|`boot_a`|`u-boot-abootimg.img`|
-|`esp`|`disk-sdcard.img1`|
-|`rootfs`|`disk-sdcard.img2`|
-
-#### Flash the image
-
-You probably want to connect to the serial port during the whole process, to follow what’s happening on the target. Plug the type-B USB cable to your host and access the serial console with 115200 8N1, e.g. with screen:
-
-Linux (tweak the name of the device):
-```bash
-screen /dev/ttyUSB* 115200
-```
-macOS (tweak the name of the device):
-```bash
-screen /dev/cu.usbserial-* 115200
-```
-
-Make sure that the 6th switch on the `DIP_SW_1` bank next to the eMMC is `ON` as to use the USB type-C port for flashing.
-
-Put the board in "emergency download" mode (EDL) by removing any cable from the USB type-C port, and pressing the `F_DL` button while turning the power on.
-
-Connect a cable from the flashing host to the USB type-C port on the board.
-
-Unpack the pre-built tarball and run:
-```bash
-qdl --storage emmc prog_firehose_ddr.elf rawprogram*.xml patch*.xml
-```
-
-You should see:
-```
-Waiting for EDL device
-waiting for programmer...
-flashed "xbl_a" successfully
-[...]
-partition 0 is now bootable
-```
-
-And the board should boot to a LightDM greeter on HDMI. Login to the serial console or Xfce session with user / password debian / debian.
-
-The USB ports and Ethernet should work after flipping the 6th switch on the `DIP_SW_1` bank next to the eMMC to `OFF`.
-
-#### Installing “qbootctl” to reset the reboot counter on boot
-
-In the installed Debian system, install “qbootctl” to make the current Android boot image as a successful:
-```bash
-sudo apt install qbootctl
-```
 
 ## Development
 

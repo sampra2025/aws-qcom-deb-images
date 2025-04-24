@@ -9,10 +9,6 @@ GIT_REPO="https://github.com/torvalds/linux"
 GIT_BRANCH="master"
 # base config to use
 CONFIG="defconfig"
-# extra configs to set
-# systemd-boot won't implement support for compressed images (zImage); see
-# https://github.com/systemd/systemd/issues/23788
-EXTRA_CONFIGS="CONFIG_EFI_ZBOOT=y"
 
 log_i() {
     echo "I: $*" >&2
@@ -68,13 +64,18 @@ git clone --depth=1 --branch "${GIT_BRANCH}" "${GIT_REPO}" linux
 
 cd linux
 
-log_i "Configuring Linux (${CONFIG}, ${EXTRA_CONFIGS})"
+log_i "Configuring Linux (base config: ${CONFIG})"
 rm -vf kernel/configs/local.config
-touch kernel/configs/local.config
-for c in ${EXTRA_CONFIGS}; do
-    echo "${c}" >>kernel/configs/local.config
+for fragment in "$@"; do
+    log_i "Adding config fragment to local.config: ${fragment}"
+    touch kernel/configs/local.config
+    cat "$fragment" >>kernel/configs/local.config
 done
-make ARCH=arm64 "${CONFIG}" local.config
+if [ -r kernel/configs/local.config]; then
+    make ARCH=arm64 "${CONFIG}" local.config
+else
+    make ARCH=arm64 "${CONFIG}"
+fi
 
 log_i "Building Linux deb"
 # TODO: build other packages?

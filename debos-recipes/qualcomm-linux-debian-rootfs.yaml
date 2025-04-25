@@ -42,6 +42,16 @@ actions:
       - network-manager
       # standard networking files (/etc/hosts, /etc/services etc.)
       - netbase
+      # Qualcomm's IPC Router protocol; needed for WiFi on some ath10k devices
+      # such as on RB1
+      - qrtr-tools
+      # Qualcomm Remote Filesystem Service; this is a dependency of the
+      # tqftpserv service, but it's actually not needed on RB1
+      # TODO drop me once https://bugs.debian.org/1104039 is fixed
+      - rmtfs
+      # TFTP server implementation for the QRTR protocol; needed for WiFi on
+      # some ath10k devices such as on RB1
+      - tqftpserv
       # dynamic device nodes handling
       - udev
       # database of radio emission regulations; needed for WiFi
@@ -167,6 +177,28 @@ actions:
       - firmware-atheros
       - firmware-qcom-soc
       - linux-image-arm64
+
+  # XXX this is a workaround until firmware-non-free migrates to testing; it
+  # might make sense to have a generic mechanism to do this
+  - action: run
+    description: Install firmware packages from unstable
+    chroot: true
+    command: |
+      set -eux
+      # add sid APT sources
+      cat >/etc/apt/sources.list.d/debian-sid.sources <<EOF
+      Types: deb
+      URIs: http://deb.debian.org/debian/
+      Suites: sid
+      Components: main non-free-firmware
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      EOF
+      # update and install kernel from experimental
+      apt update
+      apt -y install -t unstable firmware-atheros firmware-qcom-soc
+      # remove sid APT sources and update again
+      rm -f /etc/apt/sources.list.d/debian-sid.sources
+      apt update
 
 {{- if eq $experimentalkernel "true" }}
   # this is an optional temporary option to install the kernel from

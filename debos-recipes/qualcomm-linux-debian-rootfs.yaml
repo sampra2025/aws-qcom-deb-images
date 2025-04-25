@@ -1,5 +1,6 @@
 {{- $xfcedesktop := or .xfcedesktop "false" }}
 {{- $experimentalkernel := or .experimentalkernel "false" }}
+{{- $localdebs := or .localdebs "none" }}
 
 architecture: arm64
 
@@ -190,6 +191,29 @@ actions:
           /etc/apt/sources.list.d/debian-experimental.sources
 {{- end }}
 
+  # this is currently needed on boards such as RB1 which are using Android
+  # bootloader to check the boot count of the boot_a/boot_b partitions
+  - action: apt
+    description: Support boards chainloading from Android bootloader
+    recommends: true
+    packages:
+      # marks the current Android boot partition as booted successfully
+      - qbootctl
+
+{{- if ne $localdebs "none" }}
+  - action: overlay
+    description: Overlay local debs directory {{ $localdebs }} to /root/
+    source: {{ $localdebs }}
+    destination: /root/
+
+  - action: run
+    description: Install local debs from /root/
+    chroot: yes
+    command: |
+      set -eux
+      apt -y install /root/*.deb
+{{- end }}
+
   - action: run
     description: Create DTBs tarball
     chroot: false
@@ -212,3 +236,5 @@ actions:
     file: rootfs.tar.gz
     compression: gz
 
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause

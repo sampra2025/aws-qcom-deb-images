@@ -69,6 +69,27 @@ actions:
       # Depends on grub packages
       - shim-signed-
 
+  # this is to provide an updated copy of DTBs from the OS to U-Boot, notably
+  # on RB1
+  - action: run
+    description: Setup copying of DTBs to ESP partition
+    chroot: true
+    command: |
+      set -eux
+      # u-boot-efi-dtb installs a kernel hook that will trigger on kernel
+      # installation/upgrade, but also calls it explicitely in its postinst in
+      # case it was installed after the kernel; it requires an ESP partition to
+      # copy the DTBs though, so install it after the ESP partition is
+      # available
+      apt -y install u-boot-efi-dtb
+      # when building under debos, /sys/firmware/efi is not always present, so
+      # the u-boot-efi-dtb postinst doesn't install an initial copy of the
+      # DTBs; do this once here
+      latest_kernel="$(
+          linux-version list | linux-version sort --reverse | head -1)"
+      dtb_path="/usr/lib/linux-image-${latest_kernel}"
+      cp -RT "$dtb_path" "/boot/efi/dtb"
+
   - action: run
     description: Create task to grow root filesystem on first boot
     chroot: true
@@ -115,3 +136,5 @@ actions:
     postprocess: true
     command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"
 
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause

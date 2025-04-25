@@ -75,7 +75,8 @@ jobs:
         run: |
           set -x
           # start by building the root filesystem
-          debos -t localdebs:local-debs/ qualcomm-linux-debian-rootfs.yaml
+          debos -t xfcedesktop:true -t localdebs:local-debs/ \
+              qualcomm-linux-debian-rootfs.yaml
           # debos tries KVM and UML as backends, and falls back to
           # building directly on the host, but that requires loop
           # devices; use qemu backend explicitly even if it's slower

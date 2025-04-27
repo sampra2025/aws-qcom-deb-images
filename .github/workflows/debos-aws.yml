@@ -31,13 +31,13 @@ concurrency:
 jobs:
   build-debos:
     runs-on:
-      - codebuild-QualcommLinux-Arm64-${{ github.run_id }}-${{ github.run_attempt }}
+      - codebuild-QualcommLinux-Arm64-S3-${{ github.run_id }}-${{ github.run_attempt }}
       - instance-size:arm1.medium
       - buildspec-override:true # This tells our self-hosted runner to upload artifacts
     container:
       image: public.ecr.aws/docker/library/debian:trixie
       volumes:
-        - /efs/qli/metaqcom/gh-runners/quic-yocto/builds:/fileserver-builds
+        - /s3efs/qli/metaqcom/gh-runners/quic-yocto/builds:/fileserver-builds
       options: --privileged
     steps:
       - uses: actions/checkout@v4

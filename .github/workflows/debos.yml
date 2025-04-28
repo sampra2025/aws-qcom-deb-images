@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload artifacts to fileserver
         run: |
-          set -x
+          set -ux
           # curl will be used to talk to fileserver; should be installed by
           # default
           apt -y install curl

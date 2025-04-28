@@ -52,7 +52,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Copy Linux deb and U-Boot for RB1 from fileserver's downloads
+      - name: Copy Linux deb and U-Boot for RB1 from fileserver space for downloads
         run: |
           set -ux
           mkdir -v debos-recipes/local-debs
@@ -97,7 +97,7 @@ jobs:
           debos -t u_boot_rb1:rb1-boot.img \
                  debos-recipes/qualcomm-linux-debian-flash.yaml
 
-      - name: Upload artifacts to fileserver
+      - name: Upload artifacts to fileserver space for builds
         run: |
           set -ux
           # curl will be used to talk to fileserver; should be installed by

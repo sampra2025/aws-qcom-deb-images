@@ -41,7 +41,7 @@ jobs:
       image: debian:trixie
       volumes:
         - /srv/gh-runners/quic-yocto/builds:/fileserver-builds
-        - /srv/gh-runners/quic-yocto/downloads/qcom-deb-images:/fileserver-downloads
+        - /srv/gh-runners/quic-yocto/downloads:/fileserver-downloads
       options: --privileged
     steps:
       - uses: actions/checkout@v4
@@ -52,15 +52,16 @@ jobs:
         run: |
             set -ux
             mkdir -v local-debs
+            dir="/fileserver-downloads/qcom-deb-images"
             # copy linux-image but not the -dbg e.g.
             # linux-image-6.15.0-..._6.15.0...-1_arm64.deb but not
             # linux-image-6.15.0-...-dbg_6.15.0...-1_arm64.deb
-            find /fileserver-downloads/linux-deb-latest/ \
+            find "${dir}/linux-deb-latest/" \
                 -name linux-image\*.deb \
                 -not -name linux-image\*-dbg_\*.deb \
                 -exec cp -av '{}' local-debs/ \;
             # copy U-Boot RB1 binary
-            cp -av /fileserver-downloads/u-boot-rb1-latest/rb1-boot.img .
+            cp -av "${dir}/u-boot-rb1-latest/rb1-boot.img" .
 
       # make sure we have latest packages first, to get latest fixes and to
       # avoid an automated update while we're building

@@ -39,6 +39,15 @@ jobs:
         - /srv/gh-runners/quic-yocto/downloads:/fileserver-downloads
       options: --privileged
     steps:
+      # make sure we have latest packages first, to get latest fixes and to
+      # avoid an automated update while we're building
+      - name: Update OS packages
+        run: |
+          set -ux
+          apt update
+          apt -y upgrade
+          apt -y full-upgrade
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -58,27 +67,22 @@ jobs:
           # copy U-Boot RB1 binary
           cp -av "${dir}/u-boot-rb1-latest/rb1-boot.img" .
 
-      # make sure we have latest packages first, to get latest fixes and to
-      # avoid an automated update while we're building
-      - name: Update OS packages
-        run: |
-          set -x
-          apt update
-          apt -y upgrade
-          apt -y full-upgrade
-          # debos is needed to build recipes, mtools is needed for the flash
-          # recipe
-          apt -y install debos mtools
+      # mtools is needed for the flash recipe
+      - name: Install debos and dependencies of the recipes
+        run: apt -y install debos mtools
 
-      - name: Build debos recipe
+      - name: Build rootfs with debos
         run: |
-          set -x
-          # start by building the root filesystem
+          set -ux
           debos -t xfcedesktop:true -t localdebs:local-debs/ \
-              qualcomm-linux-debian-rootfs.yaml
+              debos-recipes/qualcomm-linux-debian-rootfs.yaml
+
+      - name: Build UFS and SD card images with debos
+        run: |
+          set -ux
           # debos tries KVM and UML as backends, and falls back to
           # building directly on the host, but that requires loop
-          # devices; use qemu backend explicitly even if it's slower
+          # devices; use qemu backend explicitly even if it's slower;
           # qemu backend also requires to set scratchsize, otherwise the
           # whole build is done from memory and the out of memory killer
           # gets triggered
@@ -86,9 +90,12 @@ jobs:
               debos-recipes/qualcomm-linux-debian-image.yaml
           debos -b qemu --scratchsize 4GiB -t imagetype:sdcard \
               debos-recipes/qualcomm-linux-debian-image.yaml
-          # build flashable files
+
+      - name: Build flashable files with debos
+        run: |
+          set -ux
           debos -t u_boot_rb1:rb1-boot.img \
-              debos-recipes/qualcomm-linux-debian-image.yaml
+                 debos-recipes/qualcomm-linux-debian-flash.yaml
 
       - name: Upload artifacts to fileserver
         run: |

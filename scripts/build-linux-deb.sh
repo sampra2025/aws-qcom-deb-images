@@ -62,15 +62,18 @@ fi
 log_i "Cloning Linux (${GIT_REPO}:${GIT_BRANCH})"
 git clone --depth=1 --branch "${GIT_BRANCH}" "${GIT_REPO}" linux
 
-cd linux
-
 log_i "Configuring Linux (base config: ${CONFIG})"
-rm -vf kernel/configs/local.config
+rm -vf linux/kernel/configs/local.config
 for fragment in "$@"; do
     log_i "Adding config fragment to local.config: ${fragment}"
-    touch kernel/configs/local.config
-    cat "$fragment" >>kernel/configs/local.config
+    touch linux/kernel/configs/local.config
+    cat "$fragment" >>linux/kernel/configs/local.config
 done
+
+# only change working directory after having read config fragments passed on
+# the command-line as these might be relative pathnames
+cd linux
+
 if [ -r kernel/configs/local.config]; then
     make ARCH=arm64 "${CONFIG}" local.config
 else

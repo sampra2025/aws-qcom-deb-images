@@ -77,14 +77,15 @@ jobs:
               mkdir -vp "${dir}"
               cp -av `dcmd *.changes` "${dir}"
           done
-          # create or update linux-latest symlink
+          # create or update linux-deb-latest symlink
           mkdir -vp /fileserver-downloads/qcom-deb-images
           (
               cd /fileserver-downloads/qcom-deb-images
               # remove what used to be a directory and create/update symlink to
               # point to latest build
               rm -rvf linux-latest
-              ln -svf "../${BUILD_ID}" linux-latest
+              rm -rvf linux-deb-latest
+              ln -svf "../${BUILD_ID}" linux-deb-latest
           )
           # perhaps help NFS sync
           sync

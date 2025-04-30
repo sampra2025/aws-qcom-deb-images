@@ -73,12 +73,22 @@ jobs:
           apt -y install curl
           # copy to fileserver builds and downloads directories
           for dir in "/fileserver-builds/${BUILD_ID}" \
-              "/fileserver-downloads/qcom-deb-images/linux-deb-latest"; do
+              "/fileserver-downloads/${BUILD_ID}"; do
               mkdir -vp "${dir}"
               cp -av `dcmd *.changes` "${dir}"
           done
+          # create or update linux-latest symlink
+          mkdir -vp /fileserver-downloads/qcom-deb-images
+          (
+              cd /fileserver-downloads/qcom-deb-images
+              # remove what used to be a directory and create/update symlink to
+              # point to latest build
+              rm -rvf linux-latest
+              ln -svf "../${BUILD_ID}" linux-latest
+          )
           # perhaps help NFS sync
           sync
           # instruct fileserver to publish this directory
           url="${FILESERVER_URL}/${BUILD_ID}/"
           curl -X POST -H 'Accept: text/event-stream' "${url}"
+

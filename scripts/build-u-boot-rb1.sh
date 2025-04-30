@@ -72,7 +72,7 @@ log_i "Configuring U-Boot (${CONFIG})"
 make "${CONFIG}"
 
 log_i "Building U-Boot (with device tree ${U_BOOT_DEVICE_TREE})"
-make -j`nproc` \
+make "-j$(nproc)" \
     CROSS_COMPILE=aarch64-linux-gnu- DEVICE_TREE="${U_BOOT_DEVICE_TREE}"
 
 log_i "Creating Android boot image (${ABOOT_OUTPUT})"

@@ -74,7 +74,7 @@ done
 # the command-line as these might be relative pathnames
 cd linux
 
-if [ -r kernel/configs/local.config]; then
+if [ -r kernel/configs/local.config ]; then
     make ARCH=arm64 "${CONFIG}" local.config
 else
     make ARCH=arm64 "${CONFIG}"

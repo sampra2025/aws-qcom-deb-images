@@ -82,7 +82,7 @@ fi
 
 log_i "Building Linux deb"
 # TODO: build other packages?
-make -j$(nproc) \
+make "-j$(nproc)" \
     ARCH=arm64 DEB_HOST_ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
     bindeb-pkg
 

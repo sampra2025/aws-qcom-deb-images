@@ -1,0 +1,35 @@
+name: Static analysis of shell scripts with ShellCheck
+
+on:
+  # run on pull requests to the main branch
+  pull_request:
+    branches: [main]
+  # run on pushes to the main branch
+  push:
+    branches: [main]
+
+# only need permission to read repository; implicitely set all other
+# permissions to none
+permissions:
+  contents: read
+
+# cancel in progress builds for this workflow triggered by the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: Install and run ShellCheck on shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ShellCheck
+        run: sudo apt update && sudo apt -y install shellcheck
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run ShellCheck
+        run: shellcheck scripts/*
+

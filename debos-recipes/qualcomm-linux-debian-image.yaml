@@ -4,7 +4,7 @@
 {{- $image := printf "disk-%s.img" $imagetype }}
 
 architecture: arm64
-sectorsize: {{if eq $imagetype "ufs"}} 4096 {{else}} 512 {{end}}
+sectorsize: {{if eq $imagetype "ufs"}}4096{{else}}512{{end}}
 
 actions:
   - action: unpack
@@ -56,17 +56,39 @@ actions:
 
   # XXX these kernel options might be specific to a kernel version or board
   - action: filesystem-deploy
+    description: Deploy root filesystem to mounted image
     setup-fstab: true
     append-kernel-cmdline: clk_ignore_unused pd_ignore_unused audit=0 deferred_probe_timeout=30
 
   - action: apt
-    recommends: true
     description: Make system bootable with systemd-boot
+    recommends: true
     packages:
       - systemd-boot
       # TODO investigate why systemd-boot Recommends: shim-signed which
       # Depends on grub packages
       - shim-signed-
+
+  # this is to provide an updated copy of DTBs from the OS to U-Boot, notably
+  # on RB1
+  - action: run
+    description: Setup copying of DTBs to ESP partition
+    chroot: true
+    command: |
+      set -eux
+      # u-boot-efi-dtb installs a kernel hook that will trigger on kernel
+      # installation/upgrade, but also calls it explicitely in its postinst in
+      # case it was installed after the kernel; it requires an ESP partition to
+      # copy the DTBs though, so install it after the ESP partition is
+      # available
+      apt -y install u-boot-efi-dtb
+      # when building under debos, /sys/firmware/efi is not always present, so
+      # the u-boot-efi-dtb postinst doesn't install an initial copy of the
+      # DTBs; do this once here
+      latest_kernel="$(
+          linux-version list | linux-version sort --reverse | head -1)"
+      dtb_path="/usr/lib/linux-image-${latest_kernel}"
+      cp -RT "$dtb_path" "/boot/efi/dtb"
 
   - action: run
     description: Create task to grow root filesystem on first boot
@@ -96,6 +118,23 @@ actions:
       systemctl enable debos-grow-rootfs
 
   - action: run
+    description: Extract partition images
+    postprocess: true
+    command: |
+      set -eux
+      sector_size="{{if eq $imagetype "ufs"}}4096{{else}}512{{end}}"
+      image="{{ $image }}"
+      fdisk -b "${sector_size}" -l "${image}" |
+          sed -n '1,/^Device/ d; p' |
+          while read name start end sectors rest; do
+              dd if="${image}" of="${ARTIFACTDIR}/${name}" \
+                  bs="${sector_size}" skip="${start}" count="${sectors}"
+          done
+
+  - action: run
+    description: Compress image file
     postprocess: true
     command: gzip -v -f "${ARTIFACTDIR}/{{ $image }}"
 
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
